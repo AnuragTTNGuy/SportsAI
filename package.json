@@ -1,0 +1,21 @@
+{
+  "name": "sports-insights-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @sports-insights/api",
+    "dev:worker": "npm run dev -w @sports-insights/worker",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npm run generate -w @sports-insights/db",
+    "db:migrate": "npm run migrate -w @sports-insights/db",
+    "db:studio": "npm run studio -w @sports-insights/db",
+    "seed": "npm run seed -w @sports-insights/worker",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

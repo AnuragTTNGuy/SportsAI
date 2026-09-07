@@ -1,0 +1,29 @@
+{
+  "name": "@sports-insights/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs watch src/worker.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file=../../.env dist/worker.js",
+    "seed": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/seed.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sports-insights/cache": "*",
+    "@sports-insights/db": "*",
+    "@sports-insights/derive": "*",
+    "@sports-insights/evidence": "*",
+    "@sports-insights/provider": "*",
+    "@sports-insights/shared": "*",
+    "bullmq": "^5.34.8",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
