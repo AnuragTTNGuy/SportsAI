@@ -6,18 +6,69 @@ import {
   integer,
   uuid,
   index,
+  boolean,
 } from "drizzle-orm/pg-core";
+
+export const areas = pgTable("areas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  countryCode: text("country_code").notNull(),
+  sport: text("sport").notNull().default("football"),
+  provider: text("provider").notNull(),
+  providerId: text("provider_id").notNull(),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("areas_provider_idx").on(table.provider, table.providerId),
+]);
 
 export const competitions = pgTable("competitions", {
   id: uuid("id").primaryKey().defaultRandom(),
+  areaId: uuid("area_id").references(() => areas.id),
   name: text("name").notNull(),
   sport: text("sport").notNull().default("football"),
   provider: text("provider").notNull(),
   providerId: text("provider_id").notNull(),
+  competitionKey: text("competition_key"),
+  gender: text("gender"),
+  competitionType: text("competition_type"),
+  format: text("format"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("competitions_provider_idx").on(table.provider, table.providerId),
+  index("competitions_area_idx").on(table.areaId),
+]);
+
+export const seasons = pgTable("seasons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  competitionId: uuid("competition_id").notNull().references(() => competitions.id),
+  provider: text("provider").notNull(),
+  providerId: text("provider_id").notNull(),
+  seasonYear: integer("season_year").notNull(),
+  name: text("name").notNull(),
+  currentSeason: boolean("current_season").notNull().default(false),
+  startDate: timestamp("start_date", { withTimezone: true }),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("seasons_competition_idx").on(table.competitionId),
+  index("seasons_provider_idx").on(table.provider, table.providerId),
+]);
+
+export const rounds = pgTable("rounds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  seasonId: uuid("season_id").notNull().references(() => seasons.id),
+  provider: text("provider").notNull(),
+  providerId: text("provider_id").notNull(),
+  name: text("name").notNull(),
+  roundType: text("round_type"),
+  currentRound: boolean("current_round").notNull().default(false),
+  startDate: timestamp("start_date", { withTimezone: true }),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("rounds_season_idx").on(table.seasonId),
+  index("rounds_provider_idx").on(table.provider, table.providerId),
 ]);
 
 export const teams = pgTable("teams", {

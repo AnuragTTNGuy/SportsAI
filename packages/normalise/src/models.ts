@@ -6,11 +6,56 @@ export interface CanonicalTeam {
   sport: string;
 }
 
+export interface CanonicalArea {
+  provider: string;
+  providerId: string;
+  countryCode: string;
+  name: string;
+  sport: string;
+}
+
 export interface CanonicalCompetition {
   provider: string;
   providerId: string;
+  areaProviderId: string;
   name: string;
   sport: string;
+  key?: string;
+  gender?: string;
+  competitionType?: string;
+  format?: string;
+}
+
+export interface CanonicalSeason {
+  provider: string;
+  providerId: string;
+  competitionProviderId: string;
+  season: number;
+  name: string;
+  currentSeason: boolean;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface CanonicalRound {
+  provider: string;
+  providerId: string;
+  seasonProviderId: string;
+  name: string;
+  roundType?: string;
+  currentRound: boolean;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AreasCatalog {
+  areas: Array<CanonicalArea & {
+    competitions: Array<CanonicalCompetition & {
+      seasons: Array<CanonicalSeason & {
+        rounds: CanonicalRound[];
+      }>;
+    }>;
+  }>;
 }
 
 export interface CanonicalEvent {

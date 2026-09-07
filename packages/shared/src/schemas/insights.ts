@@ -57,14 +57,51 @@ export type InsightResponse = z.infer<typeof insightResponseSchema>;
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 export type EventSummary = z.infer<typeof eventSummarySchema>;
 
+export const areasCatalogResponseSchema = z.object({
+  generatedAt: z.string().datetime(),
+  areas: z.array(z.object({
+    id: z.string(),
+    providerId: z.string(),
+    countryCode: z.string(),
+    name: z.string(),
+    competitions: z.array(z.object({
+      id: z.string(),
+      providerId: z.string(),
+      name: z.string(),
+      key: z.string().optional(),
+      gender: z.string().optional(),
+      type: z.string().optional(),
+      format: z.string().optional(),
+      seasons: z.array(z.object({
+        id: z.string(),
+        providerId: z.string(),
+        season: z.number(),
+        name: z.string(),
+        currentSeason: z.boolean(),
+        rounds: z.array(z.object({
+          id: z.string(),
+          providerId: z.string(),
+          name: z.string(),
+          type: z.string().optional(),
+          currentRound: z.boolean(),
+        })),
+      })),
+    })),
+  })),
+});
+
+export type AreasCatalogResponse = z.infer<typeof areasCatalogResponseSchema>;
+
 export const CACHE_KEYS = {
   insights: (eventId: string) => `insights:event:${eventId}:v1`,
   ladder: (competitionId: string) => `ladder:competition:${competitionId}:v1`,
   providerSchedules: (date: string) => `provider:schedules:${date}`,
+  areasCatalog: () => "areas:catalog:v1",
 } as const;
 
 export const CACHE_TTL = {
   insights: 900,
   ladder: 3600,
   providerSchedules: 600,
+  areasCatalog: 86400,
 } as const;
