@@ -4,6 +4,9 @@ export const insightCardTypeSchema = z.enum([
   "form_guide",
   "h2h",
   "trend",
+  "over_under",
+  "correct_score",
+  "half_results",
 ]);
 
 export const insightCardSchema = z.object({

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Database } from "@sports-insights/db";
 import { events, teams } from "@sports-insights/db";
 import type { CacheClient } from "@sports-insights/cache";
-import { deriveBothTeamsToScoreTrend, deriveFormGuide, deriveH2H } from "@sports-insights/derive";
+import { deriveBothTeamsToScoreTrend, deriveFormGuide, deriveH2H, deriveOverUnder25, deriveCorrectScore, deriveHalfResults } from "@sports-insights/derive";
 import {
   buildInsightResponse,
   createStatSnapshot,
@@ -109,6 +109,35 @@ async function computeInsightsForEvent(
     eventId,
     type: "trend",
     payload: trendPayload as unknown as Record<string, unknown>,
+    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
+  });
+
+  const overUnderPayload = deriveOverUnder25(homeStats, awayStats);
+  await upsertEvidence(db, {
+    eventId,
+    type: "over_under",
+    payload: overUnderPayload as unknown as Record<string, unknown>,
+    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
+  });
+
+  const correctScorePayload = deriveCorrectScore(homeStats, awayStats, h2hStats);
+  await upsertEvidence(db, {
+    eventId,
+    type: "correct_score",
+    payload: correctScorePayload as unknown as Record<string, unknown>,
+    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
+  });
+
+  const halfResultsPayload = deriveHalfResults(
+    homeStats,
+    awayStats,
+    h2hStats,
+    eventRow.homeTeamName,
+  );
+  await upsertEvidence(db, {
+    eventId,
+    type: "half_results",
+    payload: halfResultsPayload as unknown as Record<string, unknown>,
     sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
   });
 

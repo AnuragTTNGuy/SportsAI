@@ -1,3 +1,5 @@
+import type { AreasCatalog } from "@sports-insights/normalise";
+import type { ProviderConfig, SportsDataProvider } from "../types.js";
 import type {
   CanonicalCompetition,
   CanonicalEvent,
@@ -7,14 +9,49 @@ import type {
   CanonicalTeamStats,
   MatchResult,
 } from "@sports-insights/normalise";
-import type { ProviderConfig, SportsDataProvider } from "../types.js";
 
 const PROVIDER = "sportsdataio";
 
-interface SportsDataIoCompetition {
-  CompetitionId: number;
+interface SportsDataIoArea {
+  AreaId: number;
+  CountryCode: string;
   Name: string;
+  Competitions?: SportsDataIoCompetitionNested[];
+}
+
+interface SportsDataIoCompetitionNested {
+  CompetitionId: number;
+  AreaId: number;
   AreaName?: string;
+  Name: string;
+  Gender?: string;
+  Type?: string;
+  Format?: string;
+  Key?: string;
+  Seasons?: SportsDataIoSeason[];
+}
+
+interface SportsDataIoSeason {
+  SeasonId: number;
+  CompetitionId: number;
+  Season: number;
+  Name: string;
+  CompetitionName?: string;
+  StartDate?: string;
+  EndDate?: string;
+  CurrentSeason?: boolean;
+  Rounds?: SportsDataIoRound[];
+}
+
+interface SportsDataIoRound {
+  RoundId: number;
+  SeasonId: number;
+  Season?: number;
+  Name: string;
+  Type?: string;
+  StartDate?: string;
+  EndDate?: string;
+  CurrentRound?: boolean;
 }
 
 interface SportsDataIoGame {
@@ -30,6 +67,8 @@ interface SportsDataIoGame {
   AwayTeamName: string;
   HomeTeamScore?: number;
   AwayTeamScore?: number;
+  HomeTeamScorePeriod1?: number;
+  AwayTeamScorePeriod1?: number;
 }
 
 interface SportsDataIoStanding {
@@ -83,8 +122,88 @@ async function fetchJson<T>(url: string, apiKey: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function mapGameToEvent(game: SportsDataIoGame): CanonicalEvent {
+  return {
+    provider: PROVIDER,
+    providerId: String(game.GameId),
+    competitionProviderId: String(game.CompetitionId),
+    homeTeam: toTeam(game.HomeTeamId, game.HomeTeamName),
+    awayTeam: toTeam(game.AwayTeamId, game.AwayTeamName),
+    scheduledAt: new Date(game.DateTime),
+    status: game.Status,
+    sport: "football",
+    homeScore: game.HomeTeamScore,
+    awayScore: game.AwayTeamScore,
+    homeScoreHt: game.HomeTeamScorePeriod1,
+    awayScoreHt: game.AwayTeamScorePeriod1,
+  };
+}
+
+async function fetchGamesByDate(baseUrl: string, apiKey: string, date: Date): Promise<SportsDataIoGame[]> {
+  const dateStr = formatDate(date);
+  const url = `${baseUrl}/scores/json/GamesByDate/${dateStr}`;
+  const response = await fetch(url, {
+    headers: { "Ocp-Apim-Subscription-Key": apiKey },
+  });
+
+  if (response.status === 404) {
+    console.warn(`No games returned from SportsDataIO for ${dateStr} (endpoint not available on your plan)`);
+    return [];
+  }
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`SportsDataIO request failed (${response.status}): ${body}`);
+  }
+
+  return response.json() as Promise<SportsDataIoGame[]>;
+}
+
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function normaliseAreas(data: SportsDataIoArea[]): AreasCatalog {
+  return {
+    areas: data.map((area) => ({
+      provider: PROVIDER,
+      providerId: String(area.AreaId),
+      countryCode: area.CountryCode,
+      name: area.Name,
+      sport: "football",
+      competitions: (area.Competitions ?? []).map((comp) => ({
+        provider: PROVIDER,
+        providerId: String(comp.CompetitionId),
+        areaProviderId: String(area.AreaId),
+        name: comp.Name,
+        sport: "football",
+        key: comp.Key,
+        gender: comp.Gender,
+        competitionType: comp.Type,
+        format: comp.Format,
+        seasons: (comp.Seasons ?? []).map((season) => ({
+          provider: PROVIDER,
+          providerId: String(season.SeasonId),
+          competitionProviderId: String(comp.CompetitionId),
+          season: season.Season,
+          name: season.Name,
+          currentSeason: Boolean(season.CurrentSeason),
+          startDate: season.StartDate,
+          endDate: season.EndDate,
+          rounds: (season.Rounds ?? []).map((round) => ({
+            provider: PROVIDER,
+            providerId: String(round.RoundId),
+            seasonProviderId: String(season.SeasonId),
+            name: round.Name,
+            roundType: round.Type,
+            currentRound: Boolean(round.CurrentRound),
+            startDate: round.StartDate,
+            endDate: round.EndDate,
+          })),
+        })),
+      })),
+    })),
+  };
 }
 
 export function createSportsDataIoProvider(config: ProviderConfig): SportsDataProvider {
@@ -93,41 +212,41 @@ export function createSportsDataIoProvider(config: ProviderConfig): SportsDataPr
   return {
     name: PROVIDER,
 
-    async getCompetitions(): Promise<CanonicalCompetition[]> {
-      const data = await fetchJson<SportsDataIoCompetition[]>(
-        `${baseUrl}/scores/json/Competitions`,
+    async getAreas(): Promise<AreasCatalog> {
+      const data = await fetchJson<SportsDataIoArea[]>(
+        `${baseUrl}/scores/json/Areas`,
         apiKey,
       );
+      return normaliseAreas(data);
+    },
 
-      return data.map((comp) => ({
-        provider: PROVIDER,
-        providerId: String(comp.CompetitionId),
-        name: comp.Name,
-        sport: "football",
-      }));
+    async getCompetitions(): Promise<CanonicalCompetition[]> {
+      const catalog = await this.getAreas();
+      return catalog.areas.flatMap((area) =>
+        area.competitions.map((comp) => ({
+          provider: comp.provider,
+          providerId: comp.providerId,
+          areaProviderId: comp.areaProviderId,
+          name: comp.name,
+          sport: comp.sport,
+          key: comp.key,
+          gender: comp.gender,
+          competitionType: comp.competitionType,
+          format: comp.format,
+        })),
+      );
     },
 
     async getSchedules(competitionProviderId: string, date: Date): Promise<CanonicalEvent[]> {
-      const dateStr = formatDate(date);
-      const data = await fetchJson<SportsDataIoGame[]>(
-        `${baseUrl}/scores/json/GamesByDate/${dateStr}`,
-        apiKey,
-      );
-
+      const data = await fetchGamesByDate(baseUrl, apiKey, date);
       return data
         .filter((game) => String(game.CompetitionId) === competitionProviderId)
-        .map((game) => ({
-          provider: PROVIDER,
-          providerId: String(game.GameId),
-          competitionProviderId,
-          homeTeam: toTeam(game.HomeTeamId, game.HomeTeamName),
-          awayTeam: toTeam(game.AwayTeamId, game.AwayTeamName),
-          scheduledAt: new Date(game.DateTime),
-          status: game.Status,
-          sport: "football",
-          homeScore: game.HomeTeamScore,
-          awayScore: game.AwayTeamScore,
-        }));
+        .map(mapGameToEvent);
+    },
+
+    async getSchedulesByDate(date: Date): Promise<CanonicalEvent[]> {
+      const data = await fetchGamesByDate(baseUrl, apiKey, date);
+      return data.map(mapGameToEvent);
     },
 
     async getStandings(competitionProviderId: string): Promise<CanonicalStanding[]> {
@@ -180,6 +299,8 @@ export function createSportsDataIoProvider(config: ProviderConfig): SportsDataPr
           result,
           goalsFor,
           goalsAgainst,
+          goalsForHt: isHome ? game.HomeTeamScorePeriod1 : game.AwayTeamScorePeriod1,
+          goalsAgainstHt: isHome ? game.AwayTeamScorePeriod1 : game.HomeTeamScorePeriod1,
           date: game.DateTime,
         };
       });
@@ -189,16 +310,13 @@ export function createSportsDataIoProvider(config: ProviderConfig): SportsDataPr
       const bothTeamsScored = recentResults.filter(
         (r) => r.goalsFor > 0 && r.goalsAgainst > 0,
       ).length;
-      const bothTeamsScoredRate = recentResults.length
-        ? bothTeamsScored / recentResults.length
-        : 0;
 
       return {
         team: toTeam(Number(teamProviderId), teamName),
         recentResults,
         goalsScored,
         goalsConceded,
-        bothTeamsScoredRate,
+        bothTeamsScoredRate: recentResults.length ? bothTeamsScored / recentResults.length : 0,
       };
     },
 
@@ -243,6 +361,8 @@ export function deriveHeadToHeadFromGames(
         awayTeam: game.awayTeam.name,
         homeScore,
         awayScore,
+        homeScoreHt: game.homeScoreHt,
+        awayScoreHt: game.awayScoreHt,
         winner,
       };
     });

@@ -10,8 +10,9 @@ import { authPlugin } from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { eventsRoutes } from "./routes/events.js";
 import { competitionsRoutes } from "./routes/competitions.js";
+import { areasRoutes } from "./routes/areas.js";
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 5000);
 
 async function buildServer() {
   const app = Fastify({
@@ -38,10 +39,26 @@ async function buildServer() {
       },
       security: [{ apiKey: [] }],
     },
+    transform: ({ schema, url }) => {
+      if (url === "/health") {
+        return { schema, url };
+      }
+
+      return {
+        schema: {
+          ...schema,
+          security: [{ apiKey: [] }],
+        },
+        url,
+      };
+    },
   });
 
   await app.register(swaggerUi, {
     routePrefix: "/docs",
+    uiConfig: {
+      persistAuthorization: true,
+    },
   });
 
   await app.register(cors, {
@@ -60,6 +77,7 @@ async function buildServer() {
   await app.register(healthRoutes);
   await app.register(eventsRoutes, { prefix: "/v1" });
   await app.register(competitionsRoutes, { prefix: "/v1" });
+  await app.register(areasRoutes, { prefix: "/v1" });
 
   return app;
 }

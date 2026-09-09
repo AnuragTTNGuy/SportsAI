@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import {
   getInsightResponse,
   listEventsByDate,
+  listEventsByCompetition,
   writeAuditLog,
 } from "@sports-insights/evidence";
 
@@ -24,6 +25,43 @@ export const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     const eventList = await listEventsByDate(fastify.db, new Date(date), sport);
 
     await writeAuditLog(fastify.db, "list_events", "events", undefined, { date, sport });
+
+    return { events: eventList };
+  });
+
+  fastify.get("/events/by-competition", {
+    schema: {
+      description: "List events filtered by competition name and sport",
+      tags: ["Events"],
+      querystring: {
+        type: "object",
+        required: ["competition", "sport"],
+        properties: {
+          competition: { type: "string", description: "Competition name (partial match, case-insensitive)" },
+          sport: { type: "string", default: "football" },
+          date: { type: "string", format: "date", description: "Optional date filter (YYYY-MM-DD)" },
+        },
+      },
+    },
+  }, async (request) => {
+    const { competition, sport, date } = request.query as {
+      competition: string;
+      sport: string;
+      date?: string;
+    };
+    const eventList = await listEventsByCompetition(
+      fastify.db,
+      competition,
+      sport,
+      date ? new Date(date) : undefined,
+    );
+
+    await writeAuditLog(fastify.db, "list_events_by_competition", "events", undefined, {
+      competition,
+      sport,
+      date,
+      count: eventList.length,
+    });
 
     return { events: eventList };
   });

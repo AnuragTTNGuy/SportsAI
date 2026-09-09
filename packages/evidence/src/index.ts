@@ -1,4 +1,9 @@
 export {
+  ingestAreasCatalog,
+  buildAreasCatalogResponse,
+  getAreasCatalog,
+} from "./areas.js";
+export {
   computeExpiryDate,
   getEvidenceTtl,
   EVIDENCE_TTL_MINUTES,
@@ -21,6 +26,7 @@ export {
   buildInsightResponse,
   getInsightResponse,
   listEventsByDate,
+  listEventsByCompetition,
   getLadderForCompetition,
   writeAuditLog,
 } from "./service.js";

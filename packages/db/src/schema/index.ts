@@ -7,6 +7,7 @@ import {
   uuid,
   index,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const areas = pgTable("areas", {
@@ -18,6 +19,7 @@ export const areas = pgTable("areas", {
   providerId: text("provider_id").notNull(),
   capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+  unique("areas_provider_provider_id_unique").on(table.provider, table.providerId),
   index("areas_provider_idx").on(table.provider, table.providerId),
 ]);
 
@@ -35,6 +37,7 @@ export const competitions = pgTable("competitions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+  unique("competitions_provider_provider_id_unique").on(table.provider, table.providerId),
   index("competitions_provider_idx").on(table.provider, table.providerId),
   index("competitions_area_idx").on(table.areaId),
 ]);
@@ -51,6 +54,7 @@ export const seasons = pgTable("seasons", {
   endDate: timestamp("end_date", { withTimezone: true }),
   capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+  unique("seasons_provider_provider_id_unique").on(table.provider, table.providerId),
   index("seasons_competition_idx").on(table.competitionId),
   index("seasons_provider_idx").on(table.provider, table.providerId),
 ]);
@@ -67,6 +71,7 @@ export const rounds = pgTable("rounds", {
   endDate: timestamp("end_date", { withTimezone: true }),
   capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+  unique("rounds_provider_provider_id_unique").on(table.provider, table.providerId),
   index("rounds_season_idx").on(table.seasonId),
   index("rounds_provider_idx").on(table.provider, table.providerId),
 ]);
@@ -143,6 +148,7 @@ export const statSnapshots = pgTable("stat_snapshots", {
 }, (table) => [
   index("stat_snapshots_event_idx").on(table.eventId),
   index("stat_snapshots_team_idx").on(table.teamId),
+  index("stat_snapshots_type_idx").on(table.snapshotType),
 ]);
 
 export const evidenceRecords = pgTable("evidence_records", {

@@ -69,6 +69,8 @@ export interface CanonicalEvent {
   sport: string;
   homeScore?: number;
   awayScore?: number;
+  homeScoreHt?: number;
+  awayScoreHt?: number;
 }
 
 export interface CanonicalStanding {
@@ -88,6 +90,8 @@ export interface MatchResult {
   result: "W" | "D" | "L";
   goalsFor: number;
   goalsAgainst: number;
+  goalsForHt?: number;
+  goalsAgainstHt?: number;
   date: string;
 }
 
@@ -112,6 +116,8 @@ export interface HeadToHeadMeeting {
   awayTeam: string;
   homeScore: number;
   awayScore: number;
+  homeScoreHt?: number;
+  awayScoreHt?: number;
   winner?: "home" | "away" | "draw";
 }
 

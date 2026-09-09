@@ -42,6 +42,19 @@ export function createCacheClient(redisUrl: string) {
       await this.setJson(CACHE_KEYS.ladder(competitionId), payload, ttlSeconds);
     },
 
+    async getAreasCatalog(): Promise<import("@sports-insights/shared").AreasCatalogResponse | null> {
+      const { CACHE_KEYS } = await import("@sports-insights/shared");
+      return this.getJson<import("@sports-insights/shared").AreasCatalogResponse>(CACHE_KEYS.areasCatalog());
+    },
+
+    async setAreasCatalog(
+      payload: import("@sports-insights/shared").AreasCatalogResponse,
+      ttlSeconds: number,
+    ): Promise<void> {
+      const { CACHE_KEYS } = await import("@sports-insights/shared");
+      await this.setJson(CACHE_KEYS.areasCatalog(), payload, ttlSeconds);
+    },
+
     async disconnect(): Promise<void> {
       await redis.quit();
     },

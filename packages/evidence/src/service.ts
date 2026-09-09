@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "@sports-insights/db";
 import {
@@ -23,13 +23,27 @@ export async function upsertCompetition(db: Database, comp: CanonicalCompetition
     where: and(eq(competitions.provider, comp.provider), eq(competitions.providerId, comp.providerId)),
   });
 
-  if (existing) return existing;
+  if (existing) {
+    await db.update(competitions).set({
+      name: comp.name,
+      competitionKey: comp.key,
+      gender: comp.gender,
+      competitionType: comp.competitionType,
+      format: comp.format,
+      updatedAt: new Date(),
+    }).where(eq(competitions.id, existing.id));
+    return existing;
+  }
 
   const [created] = await db.insert(competitions).values({
     name: comp.name,
     sport: comp.sport,
     provider: comp.provider,
     providerId: comp.providerId,
+    competitionKey: comp.key,
+    gender: comp.gender,
+    competitionType: comp.competitionType,
+    format: comp.format,
   }).returning();
 
   return created!;
@@ -217,6 +231,9 @@ export async function buildInsightResponse(
   const formEvidence = evidenceByType.get("form_guide");
   const h2hEvidence = evidenceByType.get("h2h");
   const trendEvidence = evidenceByType.get("trend");
+  const overUnderEvidence = evidenceByType.get("over_under");
+  const correctScoreEvidence = evidenceByType.get("correct_score");
+  const halfResultsEvidence = evidenceByType.get("half_results");
   const statsEvidence = evidenceByType.get("stats");
   const ladderEvidence = evidenceByType.get("ladder");
   const lineupEvidence = evidenceByType.get("lineup");
@@ -250,10 +267,40 @@ export async function buildInsightResponse(
     });
   }
 
+  if (overUnderEvidence) {
+    cards.push({
+      type: "over_under",
+      title: "Over / Under 2.5",
+      evidenceIds: [overUnderEvidence.id],
+      payload: overUnderEvidence.payload,
+    });
+  }
+
+  if (correctScoreEvidence) {
+    cards.push({
+      type: "correct_score",
+      title: "Correct Score",
+      evidenceIds: [correctScoreEvidence.id],
+      payload: correctScoreEvidence.payload,
+    });
+  }
+
+  if (halfResultsEvidence) {
+    cards.push({
+      type: "half_results",
+      title: "Half-Time Results",
+      evidenceIds: [halfResultsEvidence.id],
+      payload: halfResultsEvidence.payload,
+    });
+  }
+
   const freshness: Record<string, string> = {};
   if (formEvidence) freshness.form = formEvidence.computedAt.toISOString();
   if (lineupEvidence) freshness.lineups = lineupEvidence.computedAt.toISOString();
   if (h2hEvidence) freshness.h2h = h2hEvidence.computedAt.toISOString();
+  if (overUnderEvidence) freshness.over_under = overUnderEvidence.computedAt.toISOString();
+  if (correctScoreEvidence) freshness.correct_score = correctScoreEvidence.computedAt.toISOString();
+  if (halfResultsEvidence) freshness.half_results = halfResultsEvidence.computedAt.toISOString();
 
   return {
     eventId,
@@ -318,6 +365,63 @@ export async function listEventsByDate(
   return rows.map((row) => ({
     id: row.id,
     competitionId: row.competitionId,
+    homeTeamId: row.homeTeamId,
+    awayTeamId: row.awayTeamId,
+    homeTeamName: row.homeTeamName,
+    awayTeamName: row.awayTeamName,
+    scheduledAt: row.scheduledAt.toISOString(),
+    status: row.status,
+    sport: row.sport,
+  }));
+}
+
+export async function listEventsByCompetition(
+  db: Database,
+  competitionName: string,
+  sport = "football",
+  date?: Date,
+) {
+  const homeTeamAlias = alias(teams, "home_team");
+  const awayTeamAlias = alias(teams, "away_team");
+
+  const conditions = [
+    ilike(competitions.name, `%${competitionName}%`),
+    eq(events.sport, sport),
+    eq(competitions.sport, sport),
+  ];
+
+  if (date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    conditions.push(gte(events.scheduledAt, start), lte(events.scheduledAt, end));
+  }
+
+  const rows = await db
+    .select({
+      id: events.id,
+      competitionId: events.competitionId,
+      competitionName: competitions.name,
+      homeTeamId: events.homeTeamId,
+      awayTeamId: events.awayTeamId,
+      scheduledAt: events.scheduledAt,
+      status: events.status,
+      sport: events.sport,
+      homeTeamName: homeTeamAlias.name,
+      awayTeamName: awayTeamAlias.name,
+    })
+    .from(events)
+    .innerJoin(competitions, eq(events.competitionId, competitions.id))
+    .innerJoin(homeTeamAlias, eq(events.homeTeamId, homeTeamAlias.id))
+    .innerJoin(awayTeamAlias, eq(events.awayTeamId, awayTeamAlias.id))
+    .where(and(...conditions))
+    .orderBy(events.scheduledAt);
+
+  return rows.map((row) => ({
+    id: row.id,
+    competitionId: row.competitionId,
+    competitionName: row.competitionName,
     homeTeamId: row.homeTeamId,
     awayTeamId: row.awayTeamId,
     homeTeamName: row.homeTeamName,

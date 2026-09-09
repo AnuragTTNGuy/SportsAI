@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --env-file=../../.env dist/worker.js",
     "seed": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/seed.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "ingest:areas": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-areas-once.ts",
+    "ingest:schedules": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-schedules-once.ts"
   },
   "dependencies": {
     "@sports-insights/cache": "*",

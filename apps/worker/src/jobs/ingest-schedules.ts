@@ -1,8 +1,9 @@
+import { and, eq } from "drizzle-orm";
 import type { Database } from "@sports-insights/db";
+import { competitions } from "@sports-insights/db";
 import type { CacheClient } from "@sports-insights/cache";
 import { createSportsDataIoProvider } from "@sports-insights/provider";
 import {
-  upsertCompetition,
   upsertEvent,
   upsertTeam,
   writeAuditLog,
@@ -22,32 +23,46 @@ export async function runIngestSchedulesJob(
 ) {
   const provider = getProvider();
   const date = data.date ? new Date(data.date) : new Date();
-  const competitionProviderId = data.competitionProviderId
-    ?? process.env.DEFAULT_COMPETITION_ID
-    ?? "1";
+  const dateLabel = date.toISOString().slice(0, 10);
 
-  const competitions = await provider.getCompetitions();
-  const competition = competitions.find((c) => c.providerId === competitionProviderId)
-    ?? competitions[0];
+  const schedules = data.competitionProviderId
+    ? await provider.getSchedules(data.competitionProviderId, date)
+    : await provider.getSchedulesByDate(date);
 
-  if (!competition) {
-    console.warn("No competitions available from provider");
-    return;
-  }
-
-  const competitionRow = await upsertCompetition(db, competition);
-  const schedules = await provider.getSchedules(competition.providerId, date);
+  let ingested = 0;
+  let skipped = 0;
+  const competitionsIngested = new Set<string>();
 
   for (const schedule of schedules) {
+    const competitionRow = await db.query.competitions.findFirst({
+      where: and(
+        eq(competitions.provider, schedule.provider),
+        eq(competitions.providerId, schedule.competitionProviderId),
+      ),
+    });
+
+    if (!competitionRow) {
+      skipped++;
+      continue;
+    }
+
     const homeTeam = await upsertTeam(db, schedule.homeTeam);
     const awayTeam = await upsertTeam(db, schedule.awayTeam);
     await upsertEvent(db, schedule, competitionRow.id, homeTeam.id, awayTeam.id);
+    competitionsIngested.add(competitionRow.name);
+    ingested++;
   }
 
-  await writeAuditLog(db, "ingest_schedules", "events", competitionRow.id, {
-    date: date.toISOString().slice(0, 10),
-    count: schedules.length,
+  await writeAuditLog(db, "ingest_schedules", "events", undefined, {
+    date: dateLabel,
+    ingested,
+    skipped,
+    competitions: [...competitionsIngested],
   });
 
-  console.log(`Ingested ${schedules.length} schedules for ${date.toISOString().slice(0, 10)}`);
+  console.log(
+    `Ingested ${ingested} schedules for ${dateLabel}`
+    + (skipped ? ` (${skipped} skipped — competition not in catalog)` : "")
+    + (competitionsIngested.size ? ` across ${competitionsIngested.size} competitions` : ""),
+  );
 }

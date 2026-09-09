@@ -5,6 +5,7 @@ import { createDb } from "@sports-insights/db";
 import { createCacheClient } from "@sports-insights/cache";
 import { runIngestSchedulesJob } from "./jobs/ingest-schedules.js";
 import { runIngestStandingsJob } from "./jobs/ingest-standings.js";
+import { runIngestAreasJob } from "./jobs/ingest-areas.js";
 import { runComputeInsightsJob } from "./jobs/compute-insights.js";
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -22,6 +23,12 @@ const ingestQueue = new Queue("ingest", { connection });
 const computeQueue = new Queue("compute", { connection });
 
 async function scheduleRecurringJobs() {
+  await ingestQueue.add(
+    "ingest-areas",
+    {},
+    { repeat: { pattern: "0 3 * * *" }, removeOnComplete: 100 },
+  );
+
   await ingestQueue.add(
     "ingest-schedules",
     { date: new Date().toISOString().slice(0, 10) },
@@ -44,6 +51,10 @@ async function scheduleRecurringJobs() {
 const ingestWorker = new Worker(
   "ingest",
   async (job) => {
+    if (job.name === "ingest-areas") {
+      await runIngestAreasJob(db, cache);
+    }
+
     if (job.name === "ingest-schedules") {
       await runIngestSchedulesJob(db, cache, job.data as { date?: string; competitionProviderId?: string });
     }
@@ -76,6 +87,7 @@ computeWorker.on("failed", (job, error) => {
 async function bootstrap() {
   await scheduleRecurringJobs();
 
+  await ingestQueue.add("ingest-areas", {});
   await ingestQueue.add("ingest-schedules", { date: new Date().toISOString().slice(0, 10) });
   await ingestQueue.add("ingest-standings", {});
   await computeQueue.add("compute-insights", {});
