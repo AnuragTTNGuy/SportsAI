@@ -270,6 +270,33 @@
   content: "🔥";
 }
 
+.insight-section--over-under {
+  border-top: 3px solid var(--accent-blue);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 40%);
+}
+
+.insight-section--over-under h3::before {
+  content: "⚽";
+}
+
+.insight-section--correct-score {
+  border-top: 3px solid var(--accent-teal);
+  background: linear-gradient(180deg, var(--accent-teal-dim) 0%, var(--bg-card) 40%);
+}
+
+.insight-section--correct-score h3::before {
+  content: "🎯";
+}
+
+.insight-section--half-results {
+  border-top: 3px solid #a78bfa;
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.12) 0%, var(--bg-card) 40%);
+}
+
+.insight-section--half-results h3::before {
+  content: "⏱️";
+}
+
 .form-row + .form-row {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -339,6 +366,204 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.ou-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ou-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.ou-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ou-stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.ou-stat-value--over {
+  color: #93c5fd;
+}
+
+.ou-stat-value--under {
+  color: #fcd34d;
+}
+
+.ou-label {
+  margin: 0 0 0.75rem;
+}
+
+.ou-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.ou-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ou-badge--over {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.ou-badge--under {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+.ou-badge--neutral {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.cs-label {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.cs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cs-item {
+  display: grid;
+  grid-template-columns: 4rem 3rem 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.cs-score {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #5eead4;
+}
+
+.cs-probability {
+  font-weight: 700;
+}
+
+.cs-source {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.ht-label {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.ht-row + .ht-row {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ht-stats {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.ht-stat {
+  font-weight: 700;
+}
+
+.ht-stat--win {
+  color: var(--win);
+}
+
+.ht-stat--draw {
+  color: var(--draw);
+}
+
+.ht-stat--loss {
+  color: var(--loss);
+}
+
+.ht-h2h {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.sport-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.sport-card {
+  text-decoration: none;
+  color: inherit;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sport-card-icon {
+  font-size: 2rem;
+}
+
+.brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.player-row + .player-row {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.player-averages {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-weight: 700;
 }
 
 .competition-card-accent {

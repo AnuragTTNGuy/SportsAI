@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Database } from "@sports-insights/db";
 import {
   areas,
@@ -157,8 +157,9 @@ export async function ingestAreasCatalog(
   };
 }
 
-export async function buildAreasCatalogResponse(db: Database): Promise<AreasCatalogResponse> {
+export async function buildAreasCatalogResponse(db: Database, sport?: string): Promise<AreasCatalogResponse> {
   const areaRows = await db.query.areas.findMany({
+    where: sport ? eq(areas.sport, sport) : undefined,
     orderBy: (table, { asc }) => [asc(table.name)],
   });
 
@@ -166,7 +167,9 @@ export async function buildAreasCatalogResponse(db: Database): Promise<AreasCata
 
   for (const area of areaRows) {
     const competitionRows = await db.query.competitions.findMany({
-      where: eq(competitions.areaId, area.id),
+      where: sport
+        ? and(eq(competitions.areaId, area.id), eq(competitions.sport, sport))
+        : eq(competitions.areaId, area.id),
       orderBy: (table, { asc }) => [asc(table.name)],
     });
 
@@ -232,11 +235,16 @@ export async function buildAreasCatalogResponse(db: Database): Promise<AreasCata
 export async function getAreasCatalog(
   db: Database,
   cache: CacheClient,
+  sport?: string,
 ): Promise<AreasCatalogResponse> {
-  const cached = await cache.getAreasCatalog();
-  if (cached) return cached;
+  if (!sport) {
+    const cached = await cache.getAreasCatalog();
+    if (cached) return cached;
+  }
 
-  const response = await buildAreasCatalogResponse(db);
-  await cache.setAreasCatalog(response, CACHE_TTL.areasCatalog);
+  const response = await buildAreasCatalogResponse(db, sport);
+  if (!sport) {
+    await cache.setAreasCatalog(response, CACHE_TTL.areasCatalog);
+  }
   return response;
 }

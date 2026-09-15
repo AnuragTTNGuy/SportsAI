@@ -13,6 +13,8 @@
     "db:migrate": "npm run migrate -w @sports-insights/db",
     "db:studio": "npm run studio -w @sports-insights/db",
     "seed": "npm run seed -w @sports-insights/worker",
+    "seed:basketball": "npm run seed:basketball -w @sports-insights/worker",
+    "seed:all": "npm run seed:all -w @sports-insights/worker",
     "ingest:areas": "npm run ingest:areas -w @sports-insights/worker",
     "ingest:schedules": "npm run ingest:schedules -w @sports-insights/worker",
     "typecheck": "npm run typecheck --workspaces --if-present",

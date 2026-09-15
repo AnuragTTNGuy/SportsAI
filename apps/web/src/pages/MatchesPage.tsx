@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { fetchCompetitionById, fetchEventsByCompetition } from "../api/client";
 import { MatchCard } from "../components/MatchCard";
-import type { Competition, EventSummary } from "../types";
+import type { Competition, EventSummary, SportSlug } from "../types";
 
 export function MatchesPage() {
-  const { competitionId } = useParams<{ competitionId: string }>();
+  const { sport = "football", competitionId } = useParams<{ sport: SportSlug; competitionId: string }>();
   const [competition, setCompetition] = useState<Competition | null>(null);
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,16 +16,16 @@ export function MatchesPage() {
     setLoading(true);
     setError(null);
 
-    fetchCompetitionById(competitionId)
+    fetchCompetitionById(competitionId, sport)
       .then(async (comp) => {
         if (!comp) throw new Error("Competition not found");
         setCompetition(comp);
-        const list = await fetchEventsByCompetition(comp.name);
+        const list = await fetchEventsByCompetition(comp.name, sport);
         setEvents(list);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [competitionId]);
+  }, [competitionId, sport]);
 
   if (loading) return <p className="status">Loading matches...</p>;
   if (error) return <p className="status error">Failed to load: {error}</p>;
@@ -33,7 +33,7 @@ export function MatchesPage() {
 
   return (
     <div>
-      <Link className="back-link" to="/">← All competitions</Link>
+      <Link className="back-link" to={`/${sport}`}>← {sport === "basketball" ? "Basketball" : "Football"} leagues</Link>
       <header className="page-header">
         <div className="page-badge">{competition.areaName}</div>
         <h1>{competition.name}</h1>
@@ -41,7 +41,7 @@ export function MatchesPage() {
       </header>
       {events.length === 0 ? (
         <p className="status">
-          No matches in the database for this competition yet. Run ingest jobs or seed data.
+          No matches in the database for this league yet. Run ingest jobs or `npm run seed:basketball`.
         </p>
       ) : (
         <div className="stack">

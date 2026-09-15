@@ -1,20 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { fetchCompetitions } from "../api/client";
 import { CompetitionCard } from "../components/CompetitionCard";
-import type { Competition } from "../types";
+import type { Competition, SportSlug } from "../types";
+
+const SPORT_LABELS: Record<SportSlug, string> = {
+  football: "Football",
+  basketball: "Basketball",
+};
 
 export function CompetitionsPage() {
+  const { sport = "football" } = useParams<{ sport: SportSlug }>();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const validSport: SportSlug = sport === "basketball" ? "basketball" : "football";
+
   useEffect(() => {
-    fetchCompetitions()
+    setLoading(true);
+    fetchCompetitions(validSport)
       .then(setCompetitions)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [validSport]);
+
+  if (sport !== "football" && sport !== "basketball") {
+    return <p className="status error">Unknown sport: {sport}</p>;
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -39,12 +53,14 @@ export function CompetitionsPage() {
 
   return (
     <div>
+      <Link className="back-link" to="/">← All Sports</Link>
       <header className="page-header">
-        <h1>Competitions</h1>
-        <p className="subtitle">Pick a competition to browse matches and insights</p>
+        <span className="page-badge">{SPORT_LABELS[validSport] ?? sport}</span>
+        <h1>{SPORT_LABELS[validSport] ?? sport} Leagues</h1>
+        <p className="subtitle">Pick a league to browse matches and insights</p>
         <input
           className="search-input"
-          placeholder="Search competitions or regions..."
+          placeholder="Search leagues or regions..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -54,12 +70,19 @@ export function CompetitionsPage() {
           <h2 className="section-title">{areaName}</h2>
           <div className="grid">
             {comps.map((comp) => (
-              <CompetitionCard key={comp.id} competition={comp} />
+              <CompetitionCard key={comp.id} competition={comp} sport={validSport} />
             ))}
           </div>
         </section>
       ))}
-      {filtered.length === 0 && <p className="status">No competitions found.</p>}
+      {filtered.length === 0 && (
+        <p className="status">
+          No leagues found for {SPORT_LABELS[validSport] ?? sport}.
+          {validSport === "basketball" && (
+            <> Run <code>npm run seed:basketball</code> to load the NBA demo league.</>
+          )}
+        </p>
+      )}
     </div>
   );
 }

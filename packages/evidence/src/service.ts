@@ -17,6 +17,7 @@ import type { CacheClient } from "@sports-insights/cache";
 import type { CanonicalCompetition, CanonicalEvent, CanonicalLineup, CanonicalStanding } from "@sports-insights/normalise";
 import { computeExpiryDate, getEvidenceTtl, type NewEvidenceInput } from "./create.js";
 import { filterValidEvidence } from "./validate.js";
+import { buildBasketballInsightCards } from "./basketball.js";
 
 export async function upsertCompetition(db: Database, comp: CanonicalCompetition) {
   const existing = await db.query.competitions.findFirst({
@@ -26,6 +27,7 @@ export async function upsertCompetition(db: Database, comp: CanonicalCompetition
   if (existing) {
     await db.update(competitions).set({
       name: comp.name,
+      sport: comp.sport,
       competitionKey: comp.key,
       gender: comp.gender,
       competitionType: comp.competitionType,
@@ -227,6 +229,24 @@ export async function buildInsightResponse(
 
   const validEvidence = await getValidatedEvidenceForEvent(db, eventId);
   const evidenceByType = new Map(validEvidence.map((e) => [e.type, e]));
+  const statsEvidence = evidenceByType.get("stats");
+  const ladderEvidence = evidenceByType.get("ladder");
+  const lineupEvidence = evidenceByType.get("lineup");
+
+  if (event.sport === "basketball") {
+    const { cards, freshness } = buildBasketballInsightCards(evidenceByType);
+    if (lineupEvidence) freshness.lineups = lineupEvidence.computedAt.toISOString();
+
+    return {
+      eventId,
+      generatedAt: new Date().toISOString(),
+      freshness,
+      cards,
+      stats: statsEvidence?.payload ?? { sport: "basketball" },
+      ladder: ladderEvidence?.payload ?? {},
+      lineup: lineupEvidence?.payload ?? {},
+    };
+  }
 
   const formEvidence = evidenceByType.get("form_guide");
   const h2hEvidence = evidenceByType.get("h2h");
@@ -234,16 +254,13 @@ export async function buildInsightResponse(
   const overUnderEvidence = evidenceByType.get("over_under");
   const correctScoreEvidence = evidenceByType.get("correct_score");
   const halfResultsEvidence = evidenceByType.get("half_results");
-  const statsEvidence = evidenceByType.get("stats");
-  const ladderEvidence = evidenceByType.get("ladder");
-  const lineupEvidence = evidenceByType.get("lineup");
 
   const cards: InsightCard[] = [];
 
   if (formEvidence) {
     cards.push({
       type: "form_guide",
-      title: "Recent Form",
+      title: "Recent Form (Last 5)",
       evidenceIds: [formEvidence.id],
       payload: formEvidence.payload,
     });

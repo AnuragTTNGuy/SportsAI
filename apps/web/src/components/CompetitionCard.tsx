@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
-import type { Competition } from "../types";
+import type { Competition, SportSlug } from "../types";
 
-export function CompetitionCard({ competition }: { competition: Competition }) {
+export function CompetitionCard({
+  competition,
+  sport = "football",
+}: {
+  competition: Competition;
+  sport?: SportSlug;
+}) {
   return (
-    <Link className="card card-link competition-card-accent" to={`/competitions/${competition.id}/matches`}>
+    <Link className="card card-link competition-card-accent" to={`/${sport}/competitions/${competition.id}/matches`}>
       <div className="card-meta">{competition.areaName}</div>
       <h2>{competition.name}</h2>
       <div className="card-tags">

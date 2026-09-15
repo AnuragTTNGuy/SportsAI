@@ -7,6 +7,7 @@ import { runIngestSchedulesJob } from "./jobs/ingest-schedules.js";
 import { runIngestStandingsJob } from "./jobs/ingest-standings.js";
 import { runIngestAreasJob } from "./jobs/ingest-areas.js";
 import { runComputeInsightsJob } from "./jobs/compute-insights.js";
+import { runComputeBasketballInsightsJob } from "./jobs/compute-basketball-insights.js";
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
@@ -71,6 +72,11 @@ const computeWorker = new Worker(
   async (job) => {
     if (job.name === "compute-insights") {
       await runComputeInsightsJob(db, cache, job.data as { eventId?: string });
+      await runComputeBasketballInsightsJob(db, cache, job.data as { eventId?: string });
+    }
+
+    if (job.name === "compute-basketball-insights") {
+      await runComputeBasketballInsightsJob(db, cache, job.data as { eventId?: string });
     }
   },
   { connection },

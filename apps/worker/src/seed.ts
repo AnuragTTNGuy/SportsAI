@@ -44,12 +44,16 @@ function buildDemoStats(
     { opponent: away.name, result: "W" as const, goalsFor: 2 + variant, goalsAgainst: 1, goalsForHt: 1, goalsAgainstHt: 0, date: new Date().toISOString() },
     { opponent: "Opponent A", result: "D" as const, goalsFor: 1, goalsAgainst: 1, goalsForHt: 0, goalsAgainstHt: 1, date: new Date().toISOString() },
     { opponent: "Opponent B", result: "W" as const, goalsFor: 3, goalsAgainst: variant, goalsForHt: 2, goalsAgainstHt: 0, date: new Date().toISOString() },
+    { opponent: "Opponent E", result: "L" as const, goalsFor: 0, goalsAgainst: 2, goalsForHt: 0, goalsAgainstHt: 1, date: new Date().toISOString() },
+    { opponent: "Opponent F", result: "W" as const, goalsFor: 2, goalsAgainst: 0, goalsForHt: 1, goalsAgainstHt: 0, date: new Date().toISOString() },
   ];
 
   const awayResults = [
     { opponent: home.name, result: "L" as const, goalsFor: 0, goalsAgainst: 2, goalsForHt: 0, goalsAgainstHt: 1, date: new Date().toISOString() },
     { opponent: "Opponent C", result: "W" as const, goalsFor: 2, goalsAgainst: 1, goalsForHt: 1, goalsAgainstHt: 0, date: new Date().toISOString() },
     { opponent: "Opponent D", result: "D" as const, goalsFor: 1, goalsAgainst: 1, goalsForHt: 1, goalsAgainstHt: 1, date: new Date().toISOString() },
+    { opponent: "Opponent G", result: "W" as const, goalsFor: 3, goalsAgainst: 2, goalsForHt: 2, goalsAgainstHt: 1, date: new Date().toISOString() },
+    { opponent: "Opponent H", result: "L" as const, goalsFor: 1, goalsAgainst: 3, goalsForHt: 0, goalsAgainstHt: 2, date: new Date().toISOString() },
   ];
 
   const homeStats: CanonicalTeamStats = {

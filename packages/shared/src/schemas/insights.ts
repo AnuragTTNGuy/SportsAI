@@ -7,6 +7,9 @@ export const insightCardTypeSchema = z.enum([
   "over_under",
   "correct_score",
   "half_results",
+  "points_over_under",
+  "player_spotlight",
+  "game_preview",
 ]);
 
 export const insightCardSchema = z.object({

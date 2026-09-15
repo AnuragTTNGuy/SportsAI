@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Database } from "@sports-insights/db";
 import { events, teams } from "@sports-insights/db";
 import type { CacheClient } from "@sports-insights/cache";
-import { deriveBothTeamsToScoreTrend, deriveFormGuide, deriveH2H, deriveOverUnder25, deriveCorrectScore, deriveHalfResults } from "@sports-insights/derive";
+import { deriveBothTeamsToScoreTrend, deriveFormGuide, deriveH2H, deriveOverUnder25, deriveCorrectScore, deriveHalfResults, RECENT_FORM_MATCHES } from "@sports-insights/derive";
 import {
   buildInsightResponse,
   createStatSnapshot,
@@ -32,6 +32,7 @@ export async function runComputeInsightsJob(
     : await db.query.events.findMany({ limit: 50 });
 
   for (const event of targetEvents) {
+    if (event.sport === "basketball") continue;
     await computeInsightsForEvent(db, cache, provider, event.id);
   }
 }
@@ -63,8 +64,8 @@ async function computeInsightsForEvent(
 
   if (!eventRow) return;
 
-  const homeStats = await provider.getTeamStats(eventRow.homeTeamProviderId, 5);
-  const awayStats = await provider.getTeamStats(eventRow.awayTeamProviderId, 5);
+  const homeStats = await provider.getTeamStats(eventRow.homeTeamProviderId, RECENT_FORM_MATCHES);
+  const awayStats = await provider.getTeamStats(eventRow.awayTeamProviderId, RECENT_FORM_MATCHES);
 
   const homeSnapshot = await createStatSnapshot(db, {
     eventId,
