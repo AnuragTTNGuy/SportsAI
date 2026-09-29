@@ -6,6 +6,7 @@ import { createCacheClient } from "@sports-insights/cache";
 import { runIngestSchedulesJob } from "./jobs/ingest-schedules.js";
 import { runIngestStandingsJob } from "./jobs/ingest-standings.js";
 import { runIngestAreasJob } from "./jobs/ingest-areas.js";
+import { runIngestNbaSchedulesJob } from "./jobs/ingest-nba-schedules.js";
 import { runComputeInsightsJob } from "./jobs/compute-insights.js";
 import { runComputeBasketballInsightsJob } from "./jobs/compute-basketball-insights.js";
 
@@ -32,7 +33,7 @@ async function scheduleRecurringJobs() {
 
   await ingestQueue.add(
     "ingest-schedules",
-    { date: new Date().toISOString().slice(0, 10) },
+    { date: new Date().toISOString().slice(0, 10), days: 14 },
     { repeat: { pattern: "*/15 * * * *" }, removeOnComplete: 100 },
   );
 
@@ -40,6 +41,12 @@ async function scheduleRecurringJobs() {
     "ingest-standings",
     {},
     { repeat: { pattern: "0 * * * *" }, removeOnComplete: 100 },
+  );
+
+  await ingestQueue.add(
+    "ingest-nba-schedules",
+    {},
+    { repeat: { pattern: "0 */6 * * *" }, removeOnComplete: 100 },
   );
 
   await computeQueue.add(
@@ -62,6 +69,10 @@ const ingestWorker = new Worker(
 
     if (job.name === "ingest-standings") {
       await runIngestStandingsJob(db, cache, job.data as { competitionProviderId?: string });
+    }
+
+    if (job.name === "ingest-nba-schedules") {
+      await runIngestNbaSchedulesJob(db, cache, job.data as { season?: string; includeUpcomingDays?: number });
     }
   },
   { connection },
@@ -94,8 +105,9 @@ async function bootstrap() {
   await scheduleRecurringJobs();
 
   await ingestQueue.add("ingest-areas", {});
-  await ingestQueue.add("ingest-schedules", { date: new Date().toISOString().slice(0, 10) });
+  await ingestQueue.add("ingest-schedules", { date: new Date().toISOString().slice(0, 10), days: 14 });
   await ingestQueue.add("ingest-standings", {});
+  await ingestQueue.add("ingest-nba-schedules", {});
   await computeQueue.add("compute-insights", {});
 
   console.log("Worker started. Scheduled ingest and compute jobs.");

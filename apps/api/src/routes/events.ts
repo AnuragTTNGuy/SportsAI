@@ -40,26 +40,38 @@ export const eventsRoutes: FastifyPluginAsync = async (fastify) => {
           competition: { type: "string", description: "Competition name (partial match, case-insensitive)" },
           sport: { type: "string", default: "football" },
           date: { type: "string", format: "date", description: "Optional date filter (YYYY-MM-DD)" },
+          upcoming: {
+            type: "boolean",
+            description: "When true, only future/non-final games. Defaults to true for all sports.",
+          },
         },
       },
     },
   }, async (request) => {
-    const { competition, sport, date } = request.query as {
+    const { competition, sport, date, upcoming } = request.query as {
       competition: string;
       sport: string;
       date?: string;
+      upcoming?: boolean | string;
     };
+
+    const upcomingOnly = upcoming === undefined
+      ? undefined
+      : upcoming === true || upcoming === "true";
+
     const eventList = await listEventsByCompetition(
       fastify.db,
       competition,
       sport,
       date ? new Date(date) : undefined,
+      { upcomingOnly },
     );
 
     await writeAuditLog(fastify.db, "list_events_by_competition", "events", undefined, {
       competition,
       sport,
       date,
+      upcomingOnly: upcomingOnly ?? true,
       count: eventList.length,
     });
 

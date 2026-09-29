@@ -38,8 +38,12 @@ cp .env.example .env
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
-| `SPORTSDATAIO_API_KEY` | API key from [SportsDataIO](https://sportsdata.io/) (required for live ingest) |
+| `SPORTSDATAIO_API_KEY` | API key from [SportsDataIO](https://sportsdata.io/) (required for football live ingest) |
 | `SPORTSDATAIO_BASE_URL` | SportsDataIO soccer API base URL |
+| `NBA_PROVIDER` | `auto` (default), `nba.com`, or `espn`. `auto` tries nba.com then falls back to ESPN |
+| `NBA_STATS_BASE_URL` | NBA stats API base (default: `https://stats.nba.com/stats`, same source as [nba_api](https://github.com/swar/nba_api)) |
+| `NBA_STATS_TIMEOUT_MS` | Timeout for NBA.com requests (default: `20000`; use `8000` for faster ESPN fallback) |
+| `ESPN_NBA_TIMEOUT_MS` | Timeout for ESPN NBA fallback requests (default: `15000`) |
 | `API_KEYS` | Comma-separated API keys accepted by the REST API |
 | `PORT` | API server port (default: `5000`) |
 
@@ -60,15 +64,37 @@ This starts:
 npm run db:migrate
 ```
 
-### 5. Seed demo data
+### 5. Seed / ingest upcoming matches
 
-Loads a sample Arsenal vs Chelsea match with insights, stats, and lineups:
+Both sports list **upcoming matches only**. Insights are computed from historical form/H2H (SportsDataIO for football; stats.nba.com for NBA with ESPN site API auto-fallback).
+
+Football demo fixtures + insights:
 
 ```bash
 npm run seed
 ```
 
-> **Note:** Seeded evidence expires after 15–120 minutes. Re-run `npm run seed` if insights return empty.
+Football upcoming from SportsDataIO (next 14 days by default):
+
+```bash
+npm run ingest:schedules
+# optional: npm run ingest:schedules -- --days=7
+```
+
+Precompute football insights for upcoming matches (or open a match — computes on demand):
+
+```bash
+npm run compute:football
+```
+
+NBA upcoming from stats.nba.com:
+
+```bash
+npm run ingest:nba
+npm run compute:nba
+```
+
+> **Note:** Seeded evidence expires after 15–120 minutes. Re-run `npm run seed` if demo football insights go empty. Live leagues need a valid `SPORTSDATAIO_API_KEY` for ingest/compute.
 
 ### 6. Start the API
 

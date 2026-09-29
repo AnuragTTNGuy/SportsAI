@@ -51,7 +51,11 @@ export async function fetchEventsByCompetition(
   competitionName: string,
   sport: SportSlug = "football",
 ): Promise<EventSummary[]> {
-  const params = new URLSearchParams({ competition: competitionName, sport });
+  const params = new URLSearchParams({
+    competition: competitionName,
+    sport,
+    upcoming: "true",
+  });
   const data = await apiFetch<{ events: EventSummary[] }>(`/v1/events/by-competition?${params}`);
   return data.events;
 }

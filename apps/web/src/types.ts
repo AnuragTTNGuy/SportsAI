@@ -44,6 +44,8 @@ export type InsightCardType =
   | "correct_score"
   | "half_results"
   | "points_over_under"
+  | "spread_cover"
+  | "team_total"
   | "player_spotlight"
   | "game_preview";
 
@@ -180,6 +182,54 @@ export interface PointsOverUnderPayload {
   homeTeam: { overRate: number; avgTotalPoints: number };
   awayTeam: { overRate: number; avgTotalPoints: number };
   recommendation: "over" | "under" | "neutral";
+}
+
+export interface SpreadLineCover {
+  line: number;
+  coverRate: number;
+  coverCount: number;
+  sampleSize: number;
+}
+
+export interface SpreadCoverPayload {
+  metric: "spread_cover";
+  lines: number[];
+  homeTeam: {
+    name: string;
+    avgMargin: number;
+    covers: SpreadLineCover[];
+  };
+  awayTeam: {
+    name: string;
+    avgMargin: number;
+    covers: SpreadLineCover[];
+  };
+  h2h: {
+    meetings: number;
+    avgMargin: number;
+    label: string;
+  };
+  label: string;
+}
+
+export interface TeamTotalPayload {
+  metric: "team_total";
+  line: number;
+  homeTeam: {
+    name: string;
+    overRate: number;
+    underRate: number;
+    avgPointsFor: number;
+    recommendation: "over" | "under" | "neutral";
+  };
+  awayTeam: {
+    name: string;
+    overRate: number;
+    underRate: number;
+    avgPointsFor: number;
+    recommendation: "over" | "under" | "neutral";
+  };
+  label: string;
 }
 
 export interface PlayerSpotlightPayload {

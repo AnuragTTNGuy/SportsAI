@@ -16,7 +16,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@sports-insights/cache": "*",
     "@sports-insights/db": "*",
+    "@sports-insights/derive": "*",
+    "@sports-insights/normalise": "*",
+    "@sports-insights/provider": "*",
     "@sports-insights/shared": "*",
     "drizzle-orm": "^0.38.3"
   },

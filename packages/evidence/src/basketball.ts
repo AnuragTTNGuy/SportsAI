@@ -17,6 +17,8 @@ export function buildBasketballInsightCards(evidenceByType: Map<string, Evidence
   const formEvidence = evidenceByType.get("form_guide");
   const h2hEvidence = evidenceByType.get("h2h");
   const pointsOuEvidence = evidenceByType.get("points_over_under");
+  const spreadCoverEvidence = evidenceByType.get("spread_cover");
+  const teamTotalEvidence = evidenceByType.get("team_total");
   const playerSpotlightEvidence = evidenceByType.get("player_spotlight");
   const gamePreviewEvidence = evidenceByType.get("game_preview");
 
@@ -48,6 +50,26 @@ export function buildBasketballInsightCards(evidenceByType: Map<string, Evidence
       payload: pointsOuEvidence.payload,
     });
     freshness.points_over_under = pointsOuEvidence.computedAt.toISOString();
+  }
+
+  if (spreadCoverEvidence) {
+    cards.push({
+      type: "spread_cover",
+      title: "Spread Cover Rate",
+      evidenceIds: [spreadCoverEvidence.id],
+      payload: spreadCoverEvidence.payload,
+    });
+    freshness.spread_cover = spreadCoverEvidence.computedAt.toISOString();
+  }
+
+  if (teamTotalEvidence) {
+    cards.push({
+      type: "team_total",
+      title: "Team Total O/U",
+      evidenceIds: [teamTotalEvidence.id],
+      payload: teamTotalEvidence.payload,
+    });
+    freshness.team_total = teamTotalEvidence.computedAt.toISOString();
   }
 
   if (playerSpotlightEvidence) {

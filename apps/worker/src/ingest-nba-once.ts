@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { createDb } from "@sports-insights/db";
 import { createCacheClient } from "@sports-insights/cache";
-import { runIngestSchedulesJob } from "./jobs/ingest-schedules.js";
+import { runIngestNbaSchedulesJob } from "./jobs/ingest-nba-schedules.js";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -11,20 +11,20 @@ async function main() {
     throw new Error("DATABASE_URL is required");
   }
 
-  const dateArg = process.argv.find((arg) => arg.startsWith("--date="))?.split("=")[1];
-  const competitionArg = process.argv.find((arg) => arg.startsWith("--competition="))?.split("=")[1];
-  const daysArg = process.argv.find((arg) => arg.startsWith("--days="))?.split("=")[1];
+  const upcomingArg = process.argv.find((arg) => arg.startsWith("--upcoming="))?.split("=")[1];
+  const noFallback = process.argv.includes("--no-fallback");
   const keepCompleted = process.argv.includes("--keep-completed");
+  const fallbackOnly = process.argv.includes("--fallback-only");
 
   const { db, close } = createDb(databaseUrl);
   const cache = createCacheClient(redisUrl);
 
   try {
-    await runIngestSchedulesJob(db, cache, {
-      date: dateArg,
-      competitionProviderId: competitionArg,
-      days: daysArg != null ? Number(daysArg) : 14,
+    await runIngestNbaSchedulesJob(db, cache, {
+      includeUpcomingDays: upcomingArg != null ? Number(upcomingArg) : 14,
+      allowFallbackSlate: !noFallback,
       pruneCompleted: !keepCompleted,
+      fallbackOnly,
     });
   } finally {
     await cache.disconnect();

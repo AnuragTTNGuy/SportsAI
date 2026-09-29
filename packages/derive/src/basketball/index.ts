@@ -155,6 +155,189 @@ export function derivePointsOverUnder(
   };
 }
 
+export const DEFAULT_SPREAD_LINES = [3.5, 5.5, 7.5] as const;
+export const DEFAULT_TEAM_TOTAL_LINE = 112.5;
+
+export interface SpreadLineCover {
+  line: number;
+  coverRate: number;
+  coverCount: number;
+  sampleSize: number;
+}
+
+export interface SpreadCoverTeam {
+  name: string;
+  avgMargin: number;
+  covers: SpreadLineCover[];
+}
+
+export interface SpreadCoverPayload {
+  metric: "spread_cover";
+  lines: number[];
+  homeTeam: SpreadCoverTeam;
+  awayTeam: SpreadCoverTeam;
+  h2h: {
+    meetings: number;
+    avgMargin: number;
+    label: string;
+  };
+  label: string;
+}
+
+export interface TeamTotalSide {
+  name: string;
+  overRate: number;
+  underRate: number;
+  avgPointsFor: number;
+  recommendation: "over" | "under" | "neutral";
+}
+
+export interface TeamTotalPayload {
+  metric: "team_total";
+  line: number;
+  homeTeam: TeamTotalSide;
+  awayTeam: TeamTotalSide;
+  label: string;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function avgMargin(results: BasketballTeamStats["recentResults"]): number {
+  if (results.length === 0) return 0;
+  const total = results.reduce((sum, r) => sum + (r.pointsFor - r.pointsAgainst), 0);
+  return round1(total / results.length);
+}
+
+/** Cover rate as a favorite giving `line` points (margin > line). */
+function coverRateAtLine(
+  results: BasketballTeamStats["recentResults"],
+  line: number,
+): SpreadLineCover {
+  const sampleSize = results.length;
+  if (sampleSize === 0) {
+    return { line, coverRate: 0, coverCount: 0, sampleSize: 0 };
+  }
+  const coverCount = results.filter((r) => r.pointsFor - r.pointsAgainst > line).length;
+  return {
+    line,
+    coverRate: coverCount / sampleSize,
+    coverCount,
+    sampleSize,
+  };
+}
+
+function buildSpreadTeam(
+  stats: BasketballTeamStats,
+  lines: readonly number[],
+): SpreadCoverTeam {
+  return {
+    name: stats.team.name,
+    avgMargin: avgMargin(stats.recentResults),
+    covers: lines.map((line) => coverRateAtLine(stats.recentResults, line)),
+  };
+}
+
+function h2hAvgMarginForHome(
+  homeTeamName: string,
+  h2h: BasketballHeadToHeadStats,
+): number {
+  if (h2h.meetings.length === 0) return 0;
+  const total = h2h.meetings.reduce((sum, meeting) => {
+    const margin = meeting.homeTeam === homeTeamName
+      ? meeting.homeScore - meeting.awayScore
+      : meeting.awayScore - meeting.homeScore;
+    return sum + margin;
+  }, 0);
+  return round1(total / h2h.meetings.length);
+}
+
+export function deriveSpreadCover(
+  homeStats: BasketballTeamStats,
+  awayStats: BasketballTeamStats,
+  h2h: BasketballHeadToHeadStats,
+  lines: readonly number[] = DEFAULT_SPREAD_LINES,
+): SpreadCoverPayload {
+  const homeTeam = buildSpreadTeam(homeStats, lines);
+  const awayTeam = buildSpreadTeam(awayStats, lines);
+  const primary = lines[1] ?? lines[0] ?? 5.5;
+  const homePrimary = homeTeam.covers.find((c) => c.line === primary)?.coverRate ?? 0;
+  const awayPrimary = awayTeam.covers.find((c) => c.line === primary)?.coverRate ?? 0;
+  const h2hMargin = h2hAvgMarginForHome(homeStats.team.name, h2h);
+  const meetings = h2h.meetings.length;
+
+  return {
+    metric: "spread_cover",
+    lines: [...lines],
+    homeTeam,
+    awayTeam,
+    h2h: {
+      meetings,
+      avgMargin: h2hMargin,
+      label: meetings
+        ? `H2H avg margin (home perspective): ${h2hMargin > 0 ? "+" : ""}${h2hMargin}`
+        : "No H2H meetings for margin",
+    },
+    label:
+      `${homeTeam.name} covers -${primary} in ${Math.round(homePrimary * 100)}% of recent games · `
+      + `${awayTeam.name} ${Math.round(awayPrimary * 100)}%`,
+  };
+}
+
+function teamPointsOverRate(
+  results: BasketballTeamStats["recentResults"],
+  line: number,
+): number {
+  if (results.length === 0) return 0;
+  return results.filter((r) => r.pointsFor > line).length / results.length;
+}
+
+function avgPointsFor(results: BasketballTeamStats["recentResults"]): number {
+  if (results.length === 0) return 0;
+  const total = results.reduce((sum, r) => sum + r.pointsFor, 0);
+  return round1(total / results.length);
+}
+
+function teamTotalRecommendation(overRateValue: number): TeamTotalSide["recommendation"] {
+  if (overRateValue >= 0.55) return "over";
+  if (overRateValue <= 0.45) return "under";
+  return "neutral";
+}
+
+function buildTeamTotalSide(
+  stats: BasketballTeamStats,
+  line: number,
+): TeamTotalSide {
+  const over = teamPointsOverRate(stats.recentResults, line);
+  return {
+    name: stats.team.name,
+    overRate: over,
+    underRate: 1 - over,
+    avgPointsFor: avgPointsFor(stats.recentResults),
+    recommendation: teamTotalRecommendation(over),
+  };
+}
+
+export function deriveTeamTotal(
+  homeStats: BasketballTeamStats,
+  awayStats: BasketballTeamStats,
+  line = DEFAULT_TEAM_TOTAL_LINE,
+): TeamTotalPayload {
+  const homeTeam = buildTeamTotalSide(homeStats, line);
+  const awayTeam = buildTeamTotalSide(awayStats, line);
+
+  return {
+    metric: "team_total",
+    line,
+    homeTeam,
+    awayTeam,
+    label:
+      `Team totals vs ${line}: ${homeTeam.name} avg ${homeTeam.avgPointsFor} · `
+      + `${awayTeam.name} avg ${awayTeam.avgPointsFor}`,
+  };
+}
+
 export function derivePlayerSpotlight(
   homeSpotlight: BasketballPlayerSpotlight | undefined,
   awaySpotlight: BasketballPlayerSpotlight | undefined,

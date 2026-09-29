@@ -30,3 +30,11 @@ export {
   getLadderForCompetition,
   writeAuditLog,
 } from "./service.js";
+export {
+  computeBasketballInsightsForEvent,
+  ensureBasketballInsights,
+} from "./compute-basketball.js";
+export {
+  computeFootballInsightsForEvent,
+  ensureFootballInsights,
+} from "./compute-football.js";

@@ -259,7 +259,7 @@ async function seedDemoMatch(
       competitionProviderId: competitionRow.providerId,
       homeTeam: { provider: "seed", providerId: match.homeId, name: match.home, sport: "football" },
       awayTeam: { provider: "seed", providerId: match.awayId, name: match.away, sport: "football" },
-      scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       status: "Scheduled",
       sport: "football",
     },

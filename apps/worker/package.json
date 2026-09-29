@@ -12,7 +12,10 @@
     "seed:all": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/seed.ts && node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/seed-basketball.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ingest:areas": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-areas-once.ts",
-    "ingest:schedules": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-schedules-once.ts"
+    "ingest:schedules": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-schedules-once.ts",
+    "ingest:nba": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/ingest-nba-once.ts",
+    "compute:nba": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/compute-nba-once.ts",
+    "compute:football": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs src/compute-football-once.ts"
   },
   "dependencies": {
     "@sports-insights/cache": "*",

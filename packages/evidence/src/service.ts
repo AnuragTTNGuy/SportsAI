@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "@sports-insights/db";
 import {
@@ -336,12 +336,37 @@ export async function getInsightResponse(
   eventId: string,
 ): Promise<InsightResponse | null> {
   const cached = await cache.getInsightPayload(eventId);
-  if (cached) return cached;
+  if (cached && cached.cards.length > 0) return cached;
 
-  const response = await buildInsightResponse(db, eventId);
+  let response = await buildInsightResponse(db, eventId);
   if (!response) return null;
 
-  await cache.setInsightPayload(eventId, response, CACHE_TTL.insights);
+  if (response.cards.length === 0) {
+    const event = await db.query.events.findFirst({ where: eq(events.id, eventId) });
+    if (event?.sport === "basketball") {
+      try {
+        const { ensureBasketballInsights } = await import("./compute-basketball.js");
+        await ensureBasketballInsights(db, cache, eventId);
+        const refreshed = await buildInsightResponse(db, eventId);
+        if (refreshed) response = refreshed;
+      } catch (error) {
+        console.error(`On-demand basketball insight compute failed for ${eventId}:`, error);
+      }
+    } else if (event?.sport === "football") {
+      try {
+        const { ensureFootballInsights } = await import("./compute-football.js");
+        await ensureFootballInsights(db, cache, eventId);
+        const refreshed = await buildInsightResponse(db, eventId);
+        if (refreshed) response = refreshed;
+      } catch (error) {
+        console.error(`On-demand football insight compute failed for ${eventId}:`, error);
+      }
+    }
+  }
+
+  if (response.cards.length > 0) {
+    await cache.setInsightPayload(eventId, response, CACHE_TTL.insights);
+  }
   return response;
 }
 
@@ -397,6 +422,7 @@ export async function listEventsByCompetition(
   competitionName: string,
   sport = "football",
   date?: Date,
+  options: { upcomingOnly?: boolean } = {},
 ) {
   const homeTeamAlias = alias(teams, "home_team");
   const awayTeamAlias = alias(teams, "away_team");
@@ -413,6 +439,14 @@ export async function listEventsByCompetition(
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
     conditions.push(gte(events.scheduledAt, start), lte(events.scheduledAt, end));
+  }
+
+  const upcomingOnly = options.upcomingOnly ?? true;
+  if (upcomingOnly) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    conditions.push(gte(events.scheduledAt, startOfToday));
+    conditions.push(sql`lower(${events.status}) not in ('final', 'f/ot', 'completed', 'closed')`);
   }
 
   const rows = await db
@@ -433,7 +467,7 @@ export async function listEventsByCompetition(
     .innerJoin(homeTeamAlias, eq(events.homeTeamId, homeTeamAlias.id))
     .innerJoin(awayTeamAlias, eq(events.awayTeamId, awayTeamAlias.id))
     .where(and(...conditions))
-    .orderBy(events.scheduledAt);
+    .orderBy(upcomingOnly ? asc(events.scheduledAt) : desc(events.scheduledAt));
 
   return rows.map((row) => ({
     id: row.id,

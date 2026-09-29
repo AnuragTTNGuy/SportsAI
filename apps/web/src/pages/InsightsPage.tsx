@@ -19,7 +19,14 @@ export function InsightsPage() {
       .finally(() => setLoading(false));
   }, [eventId]);
 
-  if (loading) return <p className="status">Loading insights...</p>;
+  if (loading) {
+    return (
+      <p className="status">
+        Loading insights...
+        {eventId ? " (first load may take a few seconds while we compute from historical data)" : ""}
+      </p>
+    );
+  }
   if (error) return <p className="status error">Failed to load: {error}</p>;
   if (!insights) return <p className="status error">No insights found</p>;
 

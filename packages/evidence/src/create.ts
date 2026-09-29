@@ -18,6 +18,8 @@ export const EVIDENCE_TTL_MINUTES: Record<string, number> = {
   correct_score: 60,
   half_results: 60,
   points_over_under: 60,
+  spread_cover: 60,
+  team_total: 60,
   player_spotlight: 60,
   game_preview: 120,
   stats: 30,

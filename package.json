@@ -17,6 +17,9 @@
     "seed:all": "npm run seed:all -w @sports-insights/worker",
     "ingest:areas": "npm run ingest:areas -w @sports-insights/worker",
     "ingest:schedules": "npm run ingest:schedules -w @sports-insights/worker",
+    "ingest:nba": "npm run ingest:nba -w @sports-insights/worker",
+    "compute:nba": "npm run compute:nba -w @sports-insights/worker",
+    "compute:football": "npm run compute:football -w @sports-insights/worker",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:web": "npm run dev -w web"
   },

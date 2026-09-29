@@ -11,6 +11,7 @@ import {
   buildInsightResponse,
 } from "@sports-insights/evidence";
 import type { BasketballHeadToHeadStats, BasketballPlayerSpotlight, BasketballTeamStats } from "@sports-insights/normalise";
+import { deriveSpreadCover, deriveTeamTotal } from "@sports-insights/derive";
 import { CACHE_TTL } from "@sports-insights/shared";
 
 function buildFormGuidePayload(homeStats: BasketballTeamStats, awayStats: BasketballTeamStats) {
@@ -103,7 +104,7 @@ function buildTeamStats(team: { id: string; name: string }, opponentPrefix: stri
   const count = recentResults.length;
 
   return {
-    team: { provider: "seed", providerId: team.id, name: team.name, sport: "basketball" },
+    team: { provider: "nba.com", providerId: team.id, name: team.name, sport: "basketball" },
     recentResults,
     pointsScored,
     pointsConceded,
@@ -168,13 +169,14 @@ async function seedNbaDetailTables(
     } = await import("@sports-insights/db");
 
     await db.insert(nbaVenues).values({ venueId: 1001, name: "Crypto.com Arena", city: "Los Angeles", state: "CA" }).onConflictDoNothing();
+    // Team IDs match stats.nba.com / nba_api (Lakers 1610612747, Celtics 1610612738)
     await db.insert(nbaTeamProfiles).values([
-      { teamId: 13, teamUuid: homeTeamUuid, key: "LAL", name: "Los Angeles Lakers", city: "Los Angeles", conference: "Western", division: "Pacific", primaryColor: "#552583", secondaryColor: "#FDB927", venueId: 1001 },
-      { teamId: 2, teamUuid: awayTeamUuid, key: "BOS", name: "Boston Celtics", city: "Boston", conference: "Eastern", division: "Atlantic", primaryColor: "#007A33", secondaryColor: "#BA9653" },
+      { teamId: 1610612747, teamUuid: homeTeamUuid, key: "LAL", name: "Los Angeles Lakers", city: "Los Angeles", conference: "Western", division: "Pacific", primaryColor: "#552583", secondaryColor: "#FDB927", venueId: 1001 },
+      { teamId: 1610612738, teamUuid: awayTeamUuid, key: "BOS", name: "Boston Celtics", city: "Boston", conference: "Eastern", division: "Atlantic", primaryColor: "#007A33", secondaryColor: "#BA9653" },
     ]).onConflictDoNothing();
     await db.insert(nbaPlayers).values([
-      { playerId: 200001, teamId: 13, firstName: "LeBron", lastName: "James", fullName: "LeBron James", position: "SF", jerseyNumber: 23 },
-      { playerId: 200002, teamId: 2, firstName: "Jayson", lastName: "Tatum", fullName: "Jayson Tatum", position: "SF", jerseyNumber: 0 },
+      { playerId: 2544, teamId: 1610612747, firstName: "LeBron", lastName: "James", fullName: "LeBron James", position: "SF", jerseyNumber: 23 },
+      { playerId: 1628369, teamId: 1610612738, firstName: "Jayson", lastName: "Tatum", fullName: "Jayson Tatum", position: "SF", jerseyNumber: 0 },
     ]).onConflictDoNothing();
     await db.insert(nbaGames).values({
       gameId: 20022001,
@@ -183,19 +185,19 @@ async function seedNbaDetailTables(
       seasonType: "REG",
       gameDate: scheduledAt.toISOString().slice(0, 10),
       gameDatetime: scheduledAt,
-      homeTeamId: 13,
-      awayTeamId: 2,
+      homeTeamId: 1610612747,
+      awayTeamId: 1610612738,
       venueId: 1001,
       status: "Scheduled",
       channel: "ESPN",
     }).onConflictDoNothing();
     await db.insert(nbaStandings).values([
-      { teamId: 13, seasonYear: 2024, wins: 45, losses: 20, winPct: "0.692", conferenceRank: 3 },
-      { teamId: 2, seasonYear: 2024, wins: 52, losses: 14, winPct: "0.788", conferenceRank: 1 },
+      { teamId: 1610612747, seasonYear: 2024, wins: 45, losses: 20, winPct: "0.692", conferenceRank: 3 },
+      { teamId: 1610612738, seasonYear: 2024, wins: 52, losses: 14, winPct: "0.788", conferenceRank: 1 },
     ]).onConflictDoNothing();
     await db.insert(nbaTeamSeasonStats).values([
-      { teamId: 13, seasonYear: 2024, gamesPlayed: 65, wins: 45, losses: 20, pointsPerGame: "113.5", opponentPointsPerGame: "110.2" },
-      { teamId: 2, seasonYear: 2024, gamesPlayed: 66, wins: 52, losses: 14, pointsPerGame: "118.4", opponentPointsPerGame: "107.8" },
+      { teamId: 1610612747, seasonYear: 2024, gamesPlayed: 65, wins: 45, losses: 20, pointsPerGame: "113.5", opponentPointsPerGame: "110.2" },
+      { teamId: 1610612738, seasonYear: 2024, gamesPlayed: 66, wins: 52, losses: 14, pointsPerGame: "118.4", opponentPointsPerGame: "107.8" },
     ]).onConflictDoNothing();
   } catch (error) {
     console.warn("Skipped NBA detail tables (run npm run db:migrate if needed):", (error as Error).message);
@@ -213,15 +215,15 @@ async function main() {
     name: "North America",
     countryCode: "US",
     sport: "basketball",
-    provider: "seed",
-    providerId: "nba-area-1",
+    provider: "nba.com",
+    providerId: "nba-area",
   }).onConflictDoUpdate({
     target: [areas.provider, areas.providerId],
     set: { name: "North America", countryCode: "US", sport: "basketball" },
   }).returning();
 
   const competition = await upsertCompetition(db, {
-    provider: "seed",
+    provider: "nba.com",
     providerId: "nba",
     areaProviderId: "nba-area-1",
     name: "NBA",
@@ -235,17 +237,21 @@ async function main() {
     .set({ areaId: createdArea.id, sport: "basketball" })
     .where(eq(competitions.id, competition.id));
 
+  // Use stats.nba.com team IDs so live compute (nba.com provider) can refresh this event
+  const LAL_ID = "1610612747";
+  const BOS_ID = "1610612738";
+
   const home = await upsertTeam(db, {
-    provider: "seed",
-    providerId: "13",
+    provider: "nba.com",
+    providerId: LAL_ID,
     name: "Los Angeles Lakers",
     shortName: "LAL",
     sport: "basketball",
   });
 
   const away = await upsertTeam(db, {
-    provider: "seed",
-    providerId: "2",
+    provider: "nba.com",
+    providerId: BOS_ID,
     name: "Boston Celtics",
     shortName: "BOS",
     sport: "basketball",
@@ -255,11 +261,11 @@ async function main() {
   const event = await upsertEvent(
     db,
     {
-      provider: "seed",
-      providerId: "20022001",
+      provider: "nba.com",
+      providerId: "0022400001",
       competitionProviderId: "nba",
-      homeTeam: { provider: "seed", providerId: "13", name: home.name, sport: "basketball" },
-      awayTeam: { provider: "seed", providerId: "2", name: away.name, sport: "basketball" },
+      homeTeam: { provider: "nba.com", providerId: LAL_ID, name: home.name, sport: "basketball" },
+      awayTeam: { provider: "nba.com", providerId: BOS_ID, name: away.name, sport: "basketball" },
       scheduledAt,
       status: "Scheduled",
       sport: "basketball",
@@ -271,15 +277,17 @@ async function main() {
 
   await seedNbaDetailTables(db, event.id, scheduledAt, home.id, away.id);
 
-  const homeStats = buildTeamStats({ id: "13", name: home.name }, "West", 2);
-  const awayStats = buildTeamStats({ id: "2", name: away.name }, "East", 1);
+  const homeStats = buildTeamStats({ id: LAL_ID, name: home.name }, "West", 2);
+  const awayStats = buildTeamStats({ id: BOS_ID, name: away.name }, "East", 1);
   const h2hStats = buildH2H(home.name, away.name);
-  const homeSpotlight = buildSpotlight(home.name, "LeBron James", 200001);
-  const awaySpotlight = buildSpotlight(away.name, "Jayson Tatum", 200002);
+  const homeSpotlight = buildSpotlight(home.name, "LeBron James", 2544);
+  const awaySpotlight = buildSpotlight(away.name, "Jayson Tatum", 1628369);
 
   await upsertEvidence(db, { eventId: event.id, type: "form_guide", payload: buildFormGuidePayload(homeStats, awayStats) as unknown as Record<string, unknown> });
   await upsertEvidence(db, { eventId: event.id, type: "h2h", payload: buildH2HPayload(home.name, away.name, h2hStats) as unknown as Record<string, unknown> });
   await upsertEvidence(db, { eventId: event.id, type: "points_over_under", payload: buildPointsOverUnderPayload(homeStats, awayStats) as unknown as Record<string, unknown> });
+  await upsertEvidence(db, { eventId: event.id, type: "spread_cover", payload: deriveSpreadCover(homeStats, awayStats, h2hStats) as unknown as Record<string, unknown> });
+  await upsertEvidence(db, { eventId: event.id, type: "team_total", payload: deriveTeamTotal(homeStats, awayStats) as unknown as Record<string, unknown> });
   await upsertEvidence(db, { eventId: event.id, type: "player_spotlight", payload: buildPlayerSpotlightPayload(homeSpotlight, awaySpotlight) as unknown as Record<string, unknown> });
   await upsertEvidence(db, { eventId: event.id, type: "game_preview", payload: buildGamePreviewPayload(home.name, away.name) as unknown as Record<string, unknown> });
   await upsertEvidence(db, { eventId: event.id, type: "stats", payload: { homeTeam: homeStats, awayTeam: awayStats, sport: "basketball" } });

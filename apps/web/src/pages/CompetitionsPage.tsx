@@ -79,7 +79,7 @@ export function CompetitionsPage() {
         <p className="status">
           No leagues found for {SPORT_LABELS[validSport] ?? sport}.
           {validSport === "basketball" && (
-            <> Run <code>npm run seed:basketball</code> to load the NBA demo league.</>
+            <> Run <code>npm run ingest:nba</code> to load NBA matches from stats.nba.com.</>
           )}
         </p>
       )}

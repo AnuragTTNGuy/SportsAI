@@ -1,190 +1,43 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, gte, and, sql } from "drizzle-orm";
 import type { Database } from "@sports-insights/db";
-import { events, teams } from "@sports-insights/db";
+import { events } from "@sports-insights/db";
 import type { CacheClient } from "@sports-insights/cache";
-import { deriveBothTeamsToScoreTrend, deriveFormGuide, deriveH2H, deriveOverUnder25, deriveCorrectScore, deriveHalfResults, RECENT_FORM_MATCHES } from "@sports-insights/derive";
-import {
-  buildInsightResponse,
-  createStatSnapshot,
-  replaceLineups,
-  upsertEvidence,
-  writeAuditLog,
-} from "@sports-insights/evidence";
-import { createSportsDataIoProvider, deriveHeadToHeadFromGames } from "@sports-insights/provider";
-import { CACHE_TTL } from "@sports-insights/shared";
-import { alias } from "drizzle-orm/pg-core";
-
-function getProvider() {
-  const apiKey = process.env.SPORTSDATAIO_API_KEY ?? "";
-  const baseUrl = process.env.SPORTSDATAIO_BASE_URL ?? "https://api.sportsdata.io/v4/soccer";
-
-  return createSportsDataIoProvider({ apiKey, baseUrl });
-}
+import { computeFootballInsightsForEvent } from "@sports-insights/evidence";
 
 export async function runComputeInsightsJob(
   db: Database,
   cache: CacheClient,
-  data: { eventId?: string },
+  data: { eventId?: string; limit?: number },
 ) {
-  const provider = getProvider();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
   const targetEvents = data.eventId
     ? await db.query.events.findMany({ where: eq(events.id, data.eventId) })
-    : await db.query.events.findMany({ limit: 50 });
+    : await db.query.events.findMany({
+      where: and(
+        eq(events.sport, "football"),
+        gte(events.scheduledAt, startOfToday),
+        sql`lower(${events.status}) not in ('final', 'f/ot', 'completed', 'closed')`,
+      ),
+      orderBy: [desc(events.scheduledAt)],
+      limit: data.limit ?? 25,
+    });
+
+  let computed = 0;
+  let failed = 0;
 
   for (const event of targetEvents) {
     if (event.sport === "basketball") continue;
-    await computeInsightsForEvent(db, cache, provider, event.id);
-  }
-}
-
-async function computeInsightsForEvent(
-  db: Database,
-  cache: CacheClient,
-  provider: ReturnType<typeof createSportsDataIoProvider>,
-  eventId: string,
-) {
-  const homeTeamAlias = alias(teams, "home_team");
-  const awayTeamAlias = alias(teams, "away_team");
-
-  const [eventRow] = await db
-    .select({
-      id: events.id,
-      providerId: events.providerId,
-      competitionId: events.competitionId,
-      homeTeamProviderId: homeTeamAlias.providerId,
-      awayTeamProviderId: awayTeamAlias.providerId,
-      homeTeamName: homeTeamAlias.name,
-      awayTeamName: awayTeamAlias.name,
-    })
-    .from(events)
-    .innerJoin(homeTeamAlias, eq(events.homeTeamId, homeTeamAlias.id))
-    .innerJoin(awayTeamAlias, eq(events.awayTeamId, awayTeamAlias.id))
-    .where(eq(events.id, eventId))
-    .limit(1);
-
-  if (!eventRow) return;
-
-  const homeStats = await provider.getTeamStats(eventRow.homeTeamProviderId, RECENT_FORM_MATCHES);
-  const awayStats = await provider.getTeamStats(eventRow.awayTeamProviderId, RECENT_FORM_MATCHES);
-
-  const homeSnapshot = await createStatSnapshot(db, {
-    eventId,
-    teamId: undefined,
-    snapshotType: "team_recent_form",
-    payload: homeStats as unknown as Record<string, unknown>,
-  });
-
-  const awaySnapshot = await createStatSnapshot(db, {
-    eventId,
-    teamId: undefined,
-    snapshotType: "team_recent_form",
-    payload: awayStats as unknown as Record<string, unknown>,
-  });
-
-  const formPayload = deriveFormGuide(homeStats, awayStats);
-  await upsertEvidence(db, {
-    eventId,
-    type: "form_guide",
-    payload: formPayload as unknown as Record<string, unknown>,
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  const competitionEvents = await provider.getSchedules(
-    process.env.DEFAULT_COMPETITION_ID ?? "1",
-    new Date(),
-  );
-  const h2hStats = deriveHeadToHeadFromGames(
-    eventRow.homeTeamName,
-    eventRow.awayTeamName,
-    competitionEvents,
-  );
-  const h2hPayload = deriveH2H(eventRow.homeTeamName, eventRow.awayTeamName, h2hStats);
-  await upsertEvidence(db, {
-    eventId,
-    type: "h2h",
-    payload: h2hPayload as unknown as Record<string, unknown>,
-  });
-
-  const trendPayload = deriveBothTeamsToScoreTrend(homeStats, awayStats);
-  await upsertEvidence(db, {
-    eventId,
-    type: "trend",
-    payload: trendPayload as unknown as Record<string, unknown>,
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  const overUnderPayload = deriveOverUnder25(homeStats, awayStats);
-  await upsertEvidence(db, {
-    eventId,
-    type: "over_under",
-    payload: overUnderPayload as unknown as Record<string, unknown>,
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  const correctScorePayload = deriveCorrectScore(homeStats, awayStats, h2hStats);
-  await upsertEvidence(db, {
-    eventId,
-    type: "correct_score",
-    payload: correctScorePayload as unknown as Record<string, unknown>,
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  const halfResultsPayload = deriveHalfResults(
-    homeStats,
-    awayStats,
-    h2hStats,
-    eventRow.homeTeamName,
-  );
-  await upsertEvidence(db, {
-    eventId,
-    type: "half_results",
-    payload: halfResultsPayload as unknown as Record<string, unknown>,
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  await upsertEvidence(db, {
-    eventId,
-    type: "stats",
-    payload: {
-      homeTeam: homeStats,
-      awayTeam: awayStats,
-    },
-    sourceStatIds: [homeSnapshot.id, awaySnapshot.id],
-  });
-
-  const lineups = await provider.getLineups(eventRow.providerId);
-  const teamIdMap = new Map<string, string>([
-    [eventRow.homeTeamProviderId, eventRow.homeTeamProviderId],
-    [eventRow.awayTeamProviderId, eventRow.awayTeamProviderId],
-  ]);
-
-  const homeTeamRow = await db.query.teams.findFirst({
-    where: eq(teams.providerId, eventRow.homeTeamProviderId),
-  });
-  const awayTeamRow = await db.query.teams.findFirst({
-    where: eq(teams.providerId, eventRow.awayTeamProviderId),
-  });
-
-  if (homeTeamRow && awayTeamRow) {
-    teamIdMap.set(eventRow.homeTeamProviderId, homeTeamRow.id);
-    teamIdMap.set(eventRow.awayTeamProviderId, awayTeamRow.id);
-    await replaceLineups(db, eventId, lineups, teamIdMap);
+    try {
+      const ok = await computeFootballInsightsForEvent(db, cache, event.id);
+      if (ok) computed++;
+      else failed++;
+    } catch (error) {
+      failed++;
+      console.error(`Football insight compute failed for ${event.id}:`, error);
+    }
   }
 
-  await upsertEvidence(db, {
-    eventId,
-    type: "lineup",
-    payload: {
-      lineups,
-      confirmed: lineups.some((l) => l.confirmed),
-    },
-  });
-
-  const response = await buildInsightResponse(db, eventId);
-  if (response) {
-    await cache.setInsightPayload(eventId, response, CACHE_TTL.insights);
-  }
-
-  await writeAuditLog(db, "compute_insights", "events", eventId);
-  console.log(`Computed insights for event ${eventId}`);
+  console.log(`Football insights job done: ${computed} computed, ${failed} failed/empty`);
 }
