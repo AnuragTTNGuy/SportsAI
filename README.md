@@ -118,7 +118,9 @@ The worker schedules jobs to ingest areas, schedules, standings, and compute ins
 
 Swagger UI is available at:
 
-**[http://localhost:5000/docs](http://localhost:5000/docs)**
+**[http://localhost:5000/docs](http://localhost:5000/docs)** (same as `npm run swagger` / `npm run dev`)
+
+**Iframe embed helper:** [http://localhost:5000/embed/docs/widget-builder](http://localhost:5000/embed/docs/widget-builder) — enter event ID and API key, then copy iframe HTML. In Swagger, use **Embed → GET /v1/embed/events/{eventId}/iframe-snippets** and copy the `iframeHtml` field from the response.
 
 ### Authentication
 

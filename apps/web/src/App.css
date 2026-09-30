@@ -674,6 +674,41 @@
   background-clip: text;
 }
 
+.embed-preview {
+  margin: 0.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.embed-frame {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  border: 0;
+  background: var(--bg-deep);
+}
+
+.embed-frame--board {
+  min-height: 720px;
+}
+
+.embed-copy-btn {
+  margin-bottom: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.embed-copy-btn:hover {
+  background: var(--bg-card-hover);
+}
+
 .ou-split {
   display: grid;
   grid-template-columns: 1fr 1fr;

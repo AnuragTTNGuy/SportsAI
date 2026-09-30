@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @sports-insights/api",
+    "swagger": "npm run dev -w @sports-insights/api",
     "dev:worker": "npm run dev -w @sports-insights/worker",
     "build": "npm run build --workspaces --if-present",
     "db:generate": "npm run generate -w @sports-insights/db",

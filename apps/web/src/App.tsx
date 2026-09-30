@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { CompetitionsPage } from "./pages/CompetitionsPage";
 import { MatchesPage } from "./pages/MatchesPage";
 import { InsightsPage } from "./pages/InsightsPage";
+import { EmbedWidgetsPage } from "./pages/EmbedWidgetsPage";
 import { SportsHomePage } from "./pages/SportsHomePage";
 import "./App.css";
 
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/:sport/competitions/:competitionId/matches" element={<MatchesPage />} />
             <Route path="/competitions/:competitionId/matches" element={<Navigate to="/football" replace />} />
             <Route path="/matches/:eventId/insights" element={<InsightsPage />} />
+            <Route path="/matches/:eventId/embed" element={<EmbedWidgetsPage />} />
           </Routes>
         </main>
       </div>

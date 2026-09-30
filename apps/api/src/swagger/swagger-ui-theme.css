@@ -1,0 +1,50 @@
+/* Try it out is always enabled (tryItOutEnabled); hide the toggle button. */
+button.try-out {
+  display: none !important;
+}
+
+.sip-widget-preview {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  background: #1b2638;
+  border: 1px solid #3b4151;
+  border-radius: 8px;
+}
+
+.sip-widget-preview-heading {
+  margin: 0 0 0.75rem;
+  color: #e8eef5;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sip-widget-preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sip-widget-preview-item {
+  border-top: 1px solid #3b4151;
+  padding-top: 0.75rem;
+}
+
+.sip-widget-preview-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.sip-widget-preview-title {
+  margin: 0 0 0.5rem;
+  color: #b0bfd0;
+  font-size: 0.85rem;
+}
+
+.sip-widget-preview-item iframe {
+  display: block;
+  width: 100%;
+  min-height: 380px;
+  border: 1px solid #3b4151;
+  border-radius: 8px;
+  background: #0c1220;
+}

@@ -40,6 +40,11 @@ export function InsightsPage() {
         <p className="subtitle">
           {stats.homeTeam?.team?.name ?? "Home"} vs {stats.awayTeam?.team?.name ?? "Away"}
         </p>
+        {eventId && (
+          <p className="card-meta">
+            <Link to={`/matches/${eventId}/embed`}>View embeddable iframe widgets →</Link>
+          </p>
+        )}
       </header>
       <div className="insights-grid">
         {insights.cards.map((card) => (
